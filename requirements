@@ -1,0 +1,6 @@
+flask
+flask-login
+flask-sqlalchemy
+beautifulsoup4
+requests
+lxml

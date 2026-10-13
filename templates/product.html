@@ -1,0 +1,120 @@
+{% extends "layout.html" %}
+{% from "_macros.html" import icon, product_visual, change_badge, verdict_icon, price_chart %}
+{% block title %}{{ card.product.title }}{% endblock %}
+{% block content %}
+{% set p, a = card.product, card.analysis %}
+{% set s, f = a.stats, a.forecast %}
+<a class="text-button back-link" href="{{ url_for('account') }}">{{ icon('back', 18) }} Мои товары</a>
+
+<section class="panel panel-pad product-head">
+  {{ product_visual(card, link=false) }}
+  <div>
+    <h1>{{ p.title }}</h1>
+    <div class="product-head-meta">
+      <a href="{{ p.source_url }}" target="_blank" rel="noopener">Открыть в магазине ({{ card.platform }})</a>
+      <span>Проверено: {{ p.last_checked.strftime('%d.%m.%Y %H:%M') if p.last_checked else 'ещё не проверялся' }}
+        ({{ card.checks }} {{ card.checks | plural('проверка', 'проверки', 'проверок') }})</span>
+    </div>
+    {% if p.last_error %}
+      <div class="product-error">Последняя проверка не удалась: {{ p.last_error }}</div>
+    {% endif %}
+  </div>
+</section>
+
+<section class="stats-grid four" aria-label="Показатели цены">
+  <article class="stat-card">
+    <div class="stat-icon">{{ icon('pin') }}</div>
+    <div>
+      <span class="stat-label">Текущая цена</span>
+      <div class="price-row">
+        <strong class="stat-value">{{ s.current | money if s else p.price_new }}</strong>{{ change_badge(s) }}
+      </div>
+      {% if s %}<span class="stat-note">с {{ s.since | ru_date }}: {{ s.first | money }}</span>{% endif %}
+    </div>
+  </article>
+  <article class="stat-card">
+    <div class="stat-icon mint">{{ icon('trend') }}</div>
+    <div>
+      {% if f %}
+        <span class="stat-label">Прогноз через {{ f.horizon_days }} {{ f.horizon_days | plural('день', 'дня', 'дней') }}</span>
+        <strong class="stat-value">≈ {{ f.price | money }}</strong>
+        <span class="stat-note">{{ f.low | money }} – {{ f.high | money }}</span>
+      {% else %}
+        <span class="stat-label">Прогноз</span>
+        <strong class="stat-value muted">—</strong>
+        <span class="stat-note">нужно ещё {{ a.days_needed }} {{ a.days_needed | plural('день', 'дня', 'дней') }}</span>
+      {% endif %}
+    </div>
+  </article>
+  <article class="stat-card">
+    <div class="stat-icon lilac">{{ icon('down') }}</div>
+    <div>
+      <span class="stat-label">Минимум</span>
+      <strong class="stat-value">{{ s.min | money if s else '—' }}</strong>
+      {% if s %}<span class="stat-note">{{ s.min_at | ru_date }}</span>{% endif %}
+    </div>
+  </article>
+  <article class="stat-card">
+    <div class="stat-icon lilac">{{ icon('trend') }}</div>
+    <div>
+      <span class="stat-label">Максимум</span>
+      <strong class="stat-value">{{ s.max | money if s else '—' }}</strong>
+      {% if s %}<span class="stat-note">{{ s.max_at | ru_date }}</span>{% endif %}
+    </div>
+  </article>
+</section>
+
+<div class="detail-grid">
+  {{ price_chart([chart], title='График цены', selectable=false) }}
+
+  <div class="side-stack">
+    <section class="panel panel-pad">
+      <span class="eyebrow">Совет</span>
+      <span class="recommendation {{ a.verdict or '' }}">{{ verdict_icon(a.verdict) }} {{ a.verdict_label }}</span>
+      <div class="advice {{ a.verdict or '' }}">
+        {% if a.advice %}{{ a.advice }}{% else %}Цена заметно не меняется — особых поводов ждать нет.{% endif %}
+      </div>
+      <dl class="facts" style="margin-top: 14px">
+        <div><dt>Тренд</dt><dd>{{ a.trend }}</dd></div>
+        {% if f %}
+          <div><dt>Прогноз по истории</dt>
+            <dd>за {{ f.based_on_days }} {{ f.based_on_days | plural('день', 'дня', 'дней') }}</dd></div>
+        {% else %}
+          <div><dt>До первого прогноза</dt>
+            <dd>{{ a.days_needed }} {{ a.days_needed | plural('день', 'дня', 'дней') }} наблюдений</dd></div>
+        {% endif %}
+      </dl>
+    </section>
+
+    <section class="panel panel-pad">
+      <div class="card-heading" style="margin-bottom: 6px">
+        <h2>Изменения цены</h2>
+      </div>
+      {% if card.changes %}
+        <ul class="history-list">
+          {% for h in card.changes %}
+            <li><time datetime="{{ h.recorded_at.isoformat() }}">{{ h.recorded_at.strftime('%d.%m.%Y %H:%M') }}</time>
+                <strong>{{ h.price | money }}</strong></li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="muted">История отсутствует</p>
+      {% endif %}
+    </section>
+
+    <section class="panel panel-pad" style="display: flex; gap: 10px; flex-wrap: wrap">
+      <form method="POST" action="{{ url_for('refresh') }}" data-busy="Обновляем…">
+        <input type="hidden" name="next" value="{{ request.path }}">
+        <button class="btn btn-ghost btn-sm">{{ icon('refresh', 16) }} Обновить цены</button>
+      </form>
+      <form method="POST" action="{{ url_for('delete', id=p.id) }}" data-confirm="Перестать отслеживать товар?">
+        <button class="btn btn-danger btn-sm">Перестать отслеживать</button>
+      </form>
+    </section>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/chart.js') }}"></script>
+{% endblock %}

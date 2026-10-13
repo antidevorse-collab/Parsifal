@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Данные и локальные артефакты
+*.db
+instance/
+reports/
+
+# IDE
+.idea/
+.vscode/
+
+# ОС
+Thumbs.db
+desktop.ini
+.DS_Store

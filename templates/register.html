@@ -1,0 +1,21 @@
+{% extends "layout.html" %}
+{% block title %}Регистрация{% endblock %}
+{% block content_class %}narrow{% endblock %}
+{% block content %}
+<section class="panel form-panel">
+  <span class="eyebrow">Parsifal</span>
+  <h1>Регистрация</h1>
+  <form method="POST">
+    <div class="field">
+      <label for="username">Логин</label>
+      <input id="username" name="username" autocomplete="username" required autofocus>
+    </div>
+    <div class="field">
+      <label for="password">Пароль</label>
+      <input id="password" type="password" name="password" autocomplete="new-password" required>
+    </div>
+    <button class="btn btn-block">Зарегистрироваться</button>
+  </form>
+  <p class="form-foot">Уже есть аккаунт? <a href="{{ url_for('auth.login') }}">Войдите</a></p>
+</section>
+{% endblock %}

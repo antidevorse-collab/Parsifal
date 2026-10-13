@@ -1,0 +1,110 @@
+{% from "_macros.html" import icon %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{% endblock %}{% if self.title() %} · {% endif %}Parsifal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="{{ url_for('static', filename='css/app.css') }}" rel="stylesheet">
+</head>
+<body>
+
+{% set nav = [('index', 'Обзор', 'grid')] %}
+{% if current_user.is_authenticated %}
+  {% set nav = nav + [('account', 'Мои товары', 'pin')] %}
+  {% if current_user.role == 'admin' %}{% set nav = nav + [('admin_panel', 'Админ-панель', 'shield')] %}{% endif %}
+{% endif %}
+
+<header class="site-header">
+  <a class="brand" href="{{ url_for('index') }}">
+    <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+    <span>Parsifal</span>
+  </a>
+
+  <nav class="main-nav" aria-label="Основная навигация">
+    {% for endpoint, label, icon_name in nav %}
+      {% set active = request.endpoint == endpoint
+                      or (endpoint == 'account' and request.endpoint == 'product_detail') %}
+      <a class="nav-item{{ ' active' if active }}" href="{{ url_for(endpoint) }}"
+         {% if active %}aria-current="page"{% endif %} title="{{ label }}">
+        {{ icon(icon_name) }}<span>{{ label }}</span>
+      </a>
+    {% endfor %}
+  </nav>
+
+  <div class="header-actions">
+    {% if current_user.is_authenticated %}
+      <button class="account-button" type="button" data-drawer-open aria-expanded="false" aria-controls="account-drawer">
+        <span class="avatar">{{ current_user.username[:1] | upper }}</span>
+        <span class="account-copy">
+          <strong>{{ current_user.username }}</strong>
+          <span>{{ tracked_count }} {{ tracked_count | plural('товар', 'товара', 'товаров') }}</span>
+        </span>
+        {{ icon('chevron', 16) }}
+      </button>
+    {% else %}
+      <a class="btn btn-ghost btn-sm" href="{{ url_for('auth.register') }}">Регистрация</a>
+      <a class="btn btn-sm" href="{{ url_for('auth.login', next=request.path if request.endpoint != 'auth.login' else None) }}">Войти</a>
+    {% endif %}
+  </div>
+</header>
+
+{% if current_user.is_authenticated %}
+  <button class="drawer-backdrop" type="button" data-drawer-close aria-label="Закрыть меню аккаунта" tabindex="-1"></button>
+  <aside class="account-drawer" id="account-drawer" aria-label="Аккаунт">
+    <div class="drawer-heading">
+      <span>Аккаунт</span>
+      <button type="button" data-drawer-close aria-label="Закрыть меню">{{ icon('close') }}</button>
+    </div>
+    <div class="drawer-profile">
+      <span class="avatar large">{{ current_user.username[:1] | upper }}</span>
+      <div>
+        <strong>{{ current_user.username }}</strong>
+        <span>{{ 'Администратор' if current_user.role == 'admin' else 'Пользователь' }}</span>
+      </div>
+    </div>
+    <span class="drawer-label">РАЗДЕЛЫ</span>
+    <a class="drawer-item" href="{{ url_for('account') }}">
+      <span class="drawer-icon">{{ icon('pin', 19) }}</span>
+      <div><strong>Мои товары</strong><span>Отслеживается: {{ tracked_count }}</span></div>
+      {{ icon('chevron', 16) }}
+    </a>
+    {% if current_user.role == 'admin' %}
+      <a class="drawer-item" href="{{ url_for('admin_panel') }}">
+        <span class="drawer-icon">{{ icon('shield', 19) }}</span>
+        <div><strong>Админ-панель</strong><span>Пользователи и все товары</span></div>
+        {{ icon('chevron', 16) }}
+      </a>
+    {% endif %}
+    <a class="drawer-item" href="{{ url_for('auth.logout') }}">
+      <span class="drawer-icon">{{ icon('logout', 19) }}</span>
+      <div><strong>Выйти</strong><span>Завершить сеанс</span></div>
+    </a>
+    <p class="drawer-foot">Цены перепроверяются автоматически каждые {{ '%g' % refresh_hours }} ч, пока приложение запущено.</p>
+  </aside>
+{% endif %}
+
+<main class="content {% block content_class %}{% endblock %}">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flashes" role="status">
+        {% for category, message in messages %}
+          <div class="flash flash-{{ category if category in ('success', 'info', 'warning', 'danger') else 'info' }}">
+            <span>{{ message }}</span>
+            <button type="button" data-flash-close aria-label="Закрыть">×</button>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  {% block content %}{% endblock %}
+</main>
+
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

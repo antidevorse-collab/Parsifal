@@ -1,0 +1,30 @@
+{% extends "layout.html" %}
+{% from "_macros.html" import icon, product_card %}
+{% block title %}Мои товары{% endblock %}
+{% block content %}
+<header class="topbar">
+  <div>
+    <span class="eyebrow">Мониторинг</span>
+    <h1>Мои товары</h1>
+  </div>
+  {% if cards %}
+    <form method="POST" action="{{ url_for('refresh') }}" data-busy="Обновляем…">
+      <button class="btn btn-ghost">{{ icon('refresh', 18) }} Обновить цены</button>
+    </form>
+  {% endif %}
+</header>
+
+{% if cards %}
+  <p class="muted small" style="margin: -12px 0 18px">
+    Цены перепроверяются автоматически каждые {{ '%g' % refresh_hours }} ч, пока приложение запущено.
+  </p>
+  <div class="product-grid">
+    {% for card in cards %}{{ product_card(card) }}{% endfor %}
+  </div>
+{% else %}
+  <section class="panel empty-state">
+    <strong>Вы пока не отслеживаете ни одного товара</strong>
+    <a href="{{ url_for('index') }}">Добавьте ссылки на главной странице.</a>
+  </section>
+{% endif %}
+{% endblock %}

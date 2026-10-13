@@ -1,0 +1,151 @@
+{# Общие элементы интерфейса: иконки и карточка отслеживаемого товара. #}
+
+{% macro icon(name, size=20) -%}
+<svg aria-hidden="true" fill="none" width="{{ size }}" height="{{ size }}" viewBox="0 0 24 24"
+     stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8">
+  {%- if name == 'grid' -%}
+    <rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/>
+    <rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>
+  {%- elif name == 'pin' -%}
+    <path d="M12 22s7-5.2 7-12A7 7 0 0 0 5 10c0 6.8 7 12 7 12Z"/><circle cx="12" cy="10" r="2.5"/>
+  {%- elif name == 'chart' -%}
+    <path d="M4 19V5"/><path d="M4 19h16"/><path d="m7 15 4-4 3 2 5-6"/>
+  {%- elif name == 'bell' -%}
+    <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/>
+  {%- elif name == 'shield' -%}
+    <path d="M12 3 5 6v6c0 4.4 3 7.6 7 9 4-1.4 7-4.6 7-9V6l-7-3Z"/>
+  {%- elif name == 'plus' -%}
+    <path d="M12 5v14M5 12h14"/>
+  {%- elif name == 'arrow' -%}
+    <path d="M5 12h14"/><path d="m14 7 5 5-5 5"/>
+  {%- elif name == 'back' -%}
+    <path d="M19 12H5"/><path d="m10 7-5 5 5 5"/>
+  {%- elif name == 'trend' -%}
+    <path d="m3 17 6-6 4 4 8-9"/><path d="M15 6h6v6"/>
+  {%- elif name == 'down' -%}
+    <path d="m3 7 6 6 4-4 8 9"/><path d="M15 18h6v-6"/>
+  {%- elif name == 'external' -%}
+    <path d="M14 4h6v6"/><path d="M10 14 20 4"/><path d="M20 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h5"/>
+  {%- elif name == 'refresh' -%}
+    <path d="M20 11a8 8 0 0 0-14.8-4M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14.8 4M20 20v-4h-4"/>
+  {%- elif name == 'chevron' -%}
+    <path d="m9 18 6-6-6-6"/>
+  {%- elif name == 'check' -%}
+    <path d="m5 12 4 4L19 6"/>
+  {%- elif name == 'clock' -%}
+    <circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>
+  {%- elif name == 'logout' -%}
+    <path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4"/><path d="M10 17l5-5-5-5"/><path d="M15 12H4"/>
+  {%- elif name == 'close' -%}
+    <path d="m6 6 12 12"/><path d="M18 6 6 18"/>
+  {%- endif -%}
+</svg>
+{%- endmacro %}
+
+{# Иконка совета: что делать с ценой #}
+{% macro verdict_icon(verdict) -%}
+  {{ icon({'wait': 'down', 'buy': 'trend', 'lowest': 'check', 'highest': 'trend'}.get(verdict, 'clock'), 15) }}
+{%- endmacro %}
+
+{# Картинка товара или заглушка с инициалами; tone — фон по id, чтобы соседние карточки различались #}
+{% macro product_visual(card, link=true) -%}
+  {% set p = card.product %}
+  <div class="product-visual tone-{{ p.id % 4 }}">
+    {% if p.image_url %}
+      <img src="{{ p.image_url }}" alt="" loading="lazy" referrerpolicy="no-referrer">
+    {% else %}
+      <div class="product-image">{{ card.initials }}</div>
+    {% endif %}
+    <span class="market-badge">{{ card.platform }}</span>
+    {% if link %}
+      <a class="product-link" href="{{ p.source_url }}" target="_blank" rel="noopener"
+         aria-label="Открыть в магазине" title="Открыть в магазине">{{ icon('external', 17) }}</a>
+    {% endif %}
+  </div>
+{%- endmacro %}
+
+{# Изменение цены с первой проверки: бейдж «−8,3%» #}
+{% macro change_badge(stats) -%}
+  {% if stats and stats.distinct > 1 %}
+    {% set share = stats.change_share %}
+    <span class="change {{ 'up' if share > 0 else 'flat' if share == 0 else '' }}"
+          title="С первой проверки">{{ share | percent }}</span>
+  {% endif %}
+{%- endmacro %}
+
+{% macro product_card(card) -%}
+  {% set p, a = card.product, card.analysis %}
+  {% set s, f = a.stats, a.forecast %}
+  <article class="product-item">
+    {{ product_visual(card) }}
+    <div class="product-body">
+      <div class="product-title">
+        <h3><a href="{{ url_for('product_detail', id=p.id) }}">{{ p.title }}</a></h3>
+        <span>
+          {% if s %}Добавлен по цене {{ s.first | money }} · {% endif %}
+          {{ card.checks }} {{ card.checks | plural('проверка', 'проверки', 'проверок') }}
+        </span>
+      </div>
+      <div class="product-metrics">
+        <div>
+          <span class="metric-label">Текущая цена</span>
+          <div class="price-row">
+            <strong class="metric-value">{{ s.current | money if s else p.price_new }}</strong>
+            {{ change_badge(s) }}
+          </div>
+        </div>
+        <div>
+          {% if f %}
+            <span class="metric-label">Прогноз на {{ f.horizon_days }} {{ f.horizon_days | plural('день', 'дня', 'дней') }}</span>
+            <strong class="metric-value">≈ {{ f.price | money }}</strong>
+            {% if f.low != f.high %}<span class="metric-note">{{ f.low | money }} – {{ f.high | money }}</span>{% endif %}
+          {% else %}
+            <span class="metric-label">Прогноз</span>
+            <strong class="metric-value muted">—</strong>
+            <span class="metric-note">через {{ a.days_needed }} {{ a.days_needed | plural('день', 'дня', 'дней') }} наблюдений</span>
+          {% endif %}
+        </div>
+      </div>
+      {% if p.last_error %}
+        <div class="product-error">Последняя проверка не удалась: {{ p.last_error }}</div>
+      {% endif %}
+    </div>
+    <div class="product-footer">
+      <span class="recommendation {{ a.verdict or '' }}">{{ verdict_icon(a.verdict) }} {{ a.verdict_label }}</span>
+      <a class="text-button small" href="{{ url_for('product_detail', id=p.id) }}">Подробнее {{ icon('arrow', 16) }}</a>
+    </div>
+  </article>
+{%- endmacro %}
+
+{# Блок графика: данные — список ProductCard.chart(), рисует static/js/chart.js #}
+{% macro price_chart(charts, title='Изменение цен', selectable=true) -%}
+  <section class="panel panel-pad" data-price-chart>
+    <div class="card-heading">
+      <div>
+        <span class="eyebrow">Динамика</span>
+        <h2>{{ title }}</h2>
+      </div>
+      <div class="chart-controls">
+        {% if selectable and charts | length > 1 %}
+          <label class="sr-only" for="chart-product">Товар</label>
+          <select class="chart-select" id="chart-product" data-chart-select>
+            {% for c in charts %}<option value="{{ loop.index0 }}">{{ c.title }}</option>{% endfor %}
+          </select>
+        {% endif %}
+        <div class="period-switcher" role="group" aria-label="Период">
+          <button type="button" data-days="7" aria-pressed="false">7 дней</button>
+          <button type="button" data-days="30" aria-pressed="false">30 дней</button>
+          <button type="button" data-days="90" aria-pressed="false">3 месяца</button>
+          <button type="button" data-days="0" aria-pressed="true">Всё</button>
+        </div>
+      </div>
+    </div>
+    <div class="price-chart" data-chart-canvas></div>
+    <div class="chart-legend" aria-hidden="true">
+      <span><i></i>Цена</span>
+      <span><i class="dashed"></i>Прогноз</span>
+      <span><i class="band"></i>Вероятный диапазон (90%)</span>
+    </div>
+    <script type="application/json" data-chart-data>{{ charts | tojson }}</script>
+  </section>
+{%- endmacro %}

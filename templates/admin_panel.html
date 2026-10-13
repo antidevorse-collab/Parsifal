@@ -1,0 +1,64 @@
+{% extends "layout.html" %}
+{% block title %}Админ-панель{% endblock %}
+{% block content %}
+<header class="topbar">
+  <div>
+    <span class="eyebrow">Администрирование</span>
+    <h1>Админ-панель</h1>
+  </div>
+</header>
+
+<section class="panel panel-pad">
+  <div class="card-heading"><h2>Пользователи</h2></div>
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>ID</th><th>Логин</th><th>Роль</th><th class="num">Товаров</th><th></th></tr></thead>
+      <tbody>
+        {% for user in users %}
+          <tr>
+            <td>{{ user.id }}</td>
+            <td>{{ user.username }}</td>
+            <td>{{ 'Администратор' if user.role == 'admin' else 'Пользователь' }}</td>
+            <td class="num">{{ user.products | length }}</td>
+            <td class="num">
+              {% if user.id != current_user.id %}
+                <form method="POST" action="{{ url_for('delete_user') }}"
+                      data-confirm="Удалить пользователя «{{ user.username }}»?">
+                  <input type="hidden" name="user_id" value="{{ user.id }}">
+                  <button class="btn btn-danger btn-sm">Удалить</button>
+                </form>
+              {% else %}
+                <span class="muted">Вы</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel panel-pad">
+  <div class="card-heading"><h2>Все товары</h2></div>
+  {% if products %}
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>Товар</th><th class="num">Цена</th><th>Проверено</th><th class="num">Следят</th></tr></thead>
+        <tbody>
+          {% for product in products %}
+            <tr>
+              <td><a href="{{ product.source_url }}" target="_blank" rel="noopener">{{ product.title }}</a>
+                {% if product.last_error %}<div class="muted small">Ошибка: {{ product.last_error }}</div>{% endif %}</td>
+              <td class="num">{{ product.price_new }}</td>
+              <td>{{ product.last_checked.strftime('%d.%m.%Y %H:%M') if product.last_checked else '—' }}</td>
+              <td class="num">{{ product.users | length }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="muted">Товаров пока нет.</p>
+  {% endif %}
+</section>
+{% endblock %}

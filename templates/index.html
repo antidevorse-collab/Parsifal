@@ -1,0 +1,161 @@
+{% extends "layout.html" %}
+{% from "_macros.html" import icon, product_card, price_chart %}
+{% block content %}
+<header class="topbar">
+  <div>
+    <span class="eyebrow">Панель управления</span>
+    <h1>{{ greeting }}{% if current_user.is_authenticated %}, {{ current_user.username }}{% endif %}</h1>
+  </div>
+  <span class="date">{{ today }}</span>
+</header>
+
+<section class="add-panel">
+  <div class="add-copy">
+    <span class="section-kicker"><i></i>УМНЫЙ МОНИТОРИНГ</span>
+    <h2>Узнайте лучшую цену до покупки</h2>
+    <p>Вставьте ссылку на товар — Parsifal проследит за динамикой цены, построит прогноз
+       и подскажет, покупать сейчас или подождать.</p>
+  </div>
+  <form class="url-area" method="POST" action="{{ url_for('index') }}" data-busy="Проверяем…">
+    <label for="url">Ссылки на товары — по одной на строку</label>
+    <div class="url-form">
+      {{ icon('external', 19) }}
+      <textarea id="url" name="url" rows="1" required data-autosize
+                placeholder="https://www.citilink.ru/product/…"></textarea>
+      <button class="btn" type="submit">{{ icon('plus', 18) }} Проверить</button>
+    </div>
+    <div class="url-meta">
+      <span>{{ supported_platforms | join(', ') }} и магазины со стандартной разметкой товара</span>
+      {% if current_user.is_authenticated %}
+        <span>Отслеживается: {{ tracked_count }}</span>
+      {% endif %}
+    </div>
+  </form>
+  <div class="hero-decoration" aria-hidden="true">
+    <div class="hero-line line-one"></div><div class="hero-line line-two"></div>
+    <div class="hero-dot dot-one"></div><div class="hero-dot dot-two"></div>
+  </div>
+</section>
+
+{% if parsed_products %}
+  <section class="panel panel-pad" data-parsed-section style="margin-top: 16px">
+    <div class="card-heading">
+      <div>
+        <span class="eyebrow">Результаты проверки</span>
+        <h2>Найденные товары</h2>
+        <p class="muted small" style="margin: 4px 0 0">Проверьте карточки перед добавлением в аккаунт.</p>
+      </div>
+      {% if current_user.is_authenticated %}
+        <form method="POST" action="{{ url_for('save_all') }}">
+          <button class="btn">{{ icon('plus', 18) }} Добавить все</button>
+        </form>
+      {% endif %}
+    </div>
+    <div class="product-grid">
+      {% for product in parsed_products %}
+        <article class="product-item">
+          <div class="product-visual tone-{{ loop.index0 % 4 }}">
+            {% if product.image_url %}
+              <img src="{{ product.image_url }}" alt="" loading="lazy" referrerpolicy="no-referrer">
+            {% else %}
+              <div class="product-image">?</div>
+            {% endif %}
+            <span class="market-badge">{{ product.platform }}</span>
+            <a class="product-link" href="{{ product.source_url }}" target="_blank" rel="noopener"
+               aria-label="Открыть в магазине" title="Открыть в магазине">{{ icon('external', 17) }}</a>
+          </div>
+          <div class="product-body">
+            <div class="product-title"><h3 title="{{ product.title }}">{{ product.title }}</h3></div>
+            <div class="product-metrics">
+              <div>
+                <span class="metric-label">Цена</span>
+                <div class="price-row">
+                  <strong class="metric-value">{{ product.price_new }}</strong>
+                  {% if product.price_old %}<del class="old-price">{{ product.price_old }}</del>{% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="product-footer">
+            {% if product.source_url in tracked_urls %}
+              <span class="recommendation lowest">{{ icon('check', 15) }} Уже отслеживается</span>
+            {% elif current_user.is_authenticated %}
+              <form method="POST" action="{{ url_for('save_parsed_product') }}">
+                <input type="hidden" name="source_url" value="{{ product.source_url }}">
+                <button class="btn btn-sm">{{ icon('plus', 16) }} Добавить</button>
+              </form>
+            {% else %}
+              <a class="btn btn-sm" href="{{ url_for('auth.login', next=url_for('index')) }}">Войдите, чтобы добавить</a>
+            {% endif %}
+            <button class="btn btn-danger btn-sm" type="button" data-remove-parsed
+                    data-endpoint="{{ url_for('remove_product') }}"
+                    data-source-url="{{ product.source_url }}">Убрать</button>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+{% endif %}
+
+{% if current_user.is_authenticated %}
+  <section class="stats-grid" aria-label="Ключевые показатели">
+    <article class="stat-card">
+      <div class="stat-icon">{{ icon('pin') }}</div>
+      <div>
+        <span class="stat-label">Товаров под наблюдением</span>
+        <strong class="stat-value">{{ stats.tracked }}</strong>
+      </div>
+    </article>
+    <article class="stat-card">
+      <div class="stat-icon mint">{{ icon('down') }}</div>
+      <div>
+        <span class="stat-label">Снижений цены</span>
+        <strong class="stat-value">{{ stats.drops_30d }}</strong>
+        <span class="stat-note">за последние 30 дней</span>
+      </div>
+    </article>
+    <article class="stat-card">
+      <div class="stat-icon lilac">{{ icon('bell') }}</div>
+      <div>
+        <span class="stat-label">Ожидается снижение</span>
+        <strong class="stat-value">{{ stats.expected_drops }}</strong>
+        <span class="stat-note">по прогнозу — лучше подождать</span>
+      </div>
+    </article>
+  </section>
+
+  {% if cards %}
+    {{ price_chart(charts) }}
+
+    <section class="panel panel-pad">
+      <div class="card-heading">
+        <div>
+          <span class="eyebrow">Мониторинг</span>
+          <h2>Отслеживаемые товары</h2>
+        </div>
+        {% if cards | length > 3 %}
+          <a class="text-button" href="{{ url_for('account') }}">Все товары {{ icon('arrow', 18) }}</a>
+        {% endif %}
+      </div>
+      <div class="product-grid">
+        {% for card in cards[:3] %}{{ product_card(card) }}{% endfor %}
+      </div>
+    </section>
+  {% else %}
+    <section class="panel empty-state">
+      <strong>Пока нечего отслеживать</strong>
+      Вставьте ссылку на товар выше и добавьте его в аккаунт — здесь появятся график цены и прогноз.
+    </section>
+  {% endif %}
+{% else %}
+  <section class="panel empty-state" style="margin-top: 16px">
+    <strong>Проверять цены можно без регистрации</strong>
+    Чтобы следить за ценой, получать прогноз и совет «покупать или ждать»,
+    <a href="{{ url_for('auth.login') }}">войдите</a> или <a href="{{ url_for('auth.register') }}">зарегистрируйтесь</a>.
+  </section>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+  {% if cards %}<script src="{{ url_for('static', filename='js/chart.js') }}"></script>{% endif %}
+{% endblock %}
